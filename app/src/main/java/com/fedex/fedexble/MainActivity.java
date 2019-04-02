@@ -66,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
     TextView peripheralTextView;
     private final static int REQUEST_ENABLE_BT = 1;
     private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
-    public static final ScanResult[] beacons = new ScanResult[3];
+    public static final ScanResult[] beacons = new ScanResult[10];
     public static final int[] beaconIDs = new int[10];
     private long tStart;
     private long tEnd;
@@ -115,18 +115,17 @@ public class MainActivity extends AppCompatActivity {
             long tDelta = tEnd - tStart;
             double elapsedSeconds = tDelta / 1000.0;
             if(beaconCounter == 10  || elapsedSeconds > 10) {
-                Log.d("BLE Data",  "Result : " +  beaconIDs[0] + ", " +  beaconIDs[1] + ", " +  beaconIDs[2] );
+                //Log.d("BLE Data",  "Result : " +  beaconIDs[0] + ", " +  beaconIDs[1] + ", " +  beaconIDs[2] );
                 stopScanning();
             }
 
             if( result.getScanRecord().getManufacturerSpecificData(321) != null) {
-                int beaconID = result.getScanRecord().getManufacturerSpecificData(321)[2];
-                //Log.d("BLE Hash",  "RSSI : " +  result.getRssi() + " || ID : " + result.getScanRecord().getManufacturerSpecificData(321)[2]);
-                peripheralTextView.append("Device ID: " + beaconID + "  | RSSI: " + result.getRssi() + "\n");
+                Log.d("BLE Data",  "RSSI : " +  result.getRssi() + " || Result : " + result);
+                peripheralTextView.append("Device ID: " + result.getDevice() + "  | RSSI: " + result.getRssi() + "\n");
                 // 여기에 같은거 다른 스트랭스 체크해서 넣어야됨
-                if(!Arrays.asList(beaconIDs).contains(beaconID)) {
+                if(!Arrays.asList(beaconIDs).contains(result.getDevice())) {
                     beacons[beaconCounter] = result;
-                    beaconIDs[beaconCounter] = beaconID;
+                    //beaconIDs[beaconCounter] = result.getDevice();
                     for (int i = 0; i < beaconCounter; i++) {
                         if (beacons[i].getRssi() < beacons[i + 1].getRssi()) {
                             ScanResult temp = beacons[i];
@@ -137,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
                             beacons[i + 1] = temp;
                         }
                     }
-                    Toast.makeText(getApplicationContext(), "You have changed locations to: " + beaconID, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getApplicationContext(), "You have changed locations to: " + result.getDevice(), Toast.LENGTH_SHORT).show();
                     beaconCounter++;
                 }
                 // auto scroll for text view
