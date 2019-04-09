@@ -92,15 +92,15 @@ public class MainActivity extends AppCompatActivity {
             if(done) return;
 
             if( result.getScanRecord().getManufacturerSpecificData(321) != null) {
+                Beacon input = new Beacon(result.getDevice().getAddress(), result.getRssi());
                 if(beaconResult.containsKey(result.getDevice().getAddress())) {
                     beaconResult.remove(result.getDevice().getAddress());
-                    peripheralTextView.append("Mac : " + result.getDevice().getAddress() + "  | RSSI: " + result.getRssi() + " | Status: Updating" +"\n" );
-                    //Log.d("BLE Data",  " Updating " + " MAC : " + result.getDevice().getAddress());
+                    peripheralTextView.append(input + " | Status: Updating" +"\n" );
                 } else {
-                    peripheralTextView.append("Mac : " + result.getDevice().getAddress() + "  | RSSI: " + result.getRssi() + " | Status: Found" +"\n" );
+                    peripheralTextView.append(input + " | Status: Found" +"\n" );
                 }
-                beaconResult.put(result.getDevice().getAddress(), new Beacon(result.getDevice().getAddress(), result.getRssi(), 0));
-                Log.d("result", beaconResult.get(result.getDevice().getAddress()).toString());
+                beaconResult.put(input.macAddr, input);
+                Log.d("result", input.toString());
 
                 // auto scroll for text view
                 final int scrollAmount = peripheralTextView.getLayout().getLineTop(peripheralTextView.getLineCount()) - peripheralTextView.getHeight();
