@@ -33,14 +33,6 @@
         <service
             android:name="com.kontakt.sdk.android.ble.service.ProximityService"
             android:exported="false" />
-        <service
-            android:name=".BackgroundService"
-            android:enabled="true"
-            android:exported="true" />
-        <service
-            android:name=".ButtonBubbleService"
-            android:enabled="true"
-            android:exported="true"></service>
     </application>
 
 </manifest>
