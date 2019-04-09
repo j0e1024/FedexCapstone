@@ -54,8 +54,9 @@ import com.kontakt.sdk.android.common.profile.IBeaconRegion;
 import com.kontakt.sdk.android.common.profile.IEddystoneDevice;
 import com.kontakt.sdk.android.common.profile.IEddystoneNamespace;
 
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -65,9 +66,8 @@ public class MainActivity extends AppCompatActivity {
     Button ScanningButton;
     TextView peripheralTextView;
     private final static int REQUEST_ENABLE_BT = 1;
-    private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
-    public static final ScanResult[] beacons = new ScanResult[10];
-    public static final int[] beaconIDs = new int[10];
+    public HashMap<String, Beacon> beaconResult;
+    public TreeMap<String, Beacon> sorted;
     private long tStart;
     private long tEnd;
     private int beaconCounter = 0;
@@ -91,7 +91,8 @@ public class MainActivity extends AppCompatActivity {
         btManager = (BluetoothManager)getSystemService(Context.BLUETOOTH_SERVICE);
         btAdapter = btManager.getAdapter();
         btScanner = btAdapter.getBluetoothLeScanner();
-
+        beaconResult = new HashMap<>();
+        sorted = new TreeMap<>(new BeaconComparator(beaconResult));
 
         if (btAdapter != null && !btAdapter.isEnabled()) {
             Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
@@ -110,35 +111,26 @@ public class MainActivity extends AppCompatActivity {
     private ScanCallback leScanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
-
+            /////////////////////////////////////// Timer //////////////////////////
             tEnd = System.currentTimeMillis();
             long tDelta = tEnd - tStart;
             double elapsedSeconds = tDelta / 1000.0;
-            if(beaconCounter == 10  || elapsedSeconds > 10) {
-                //Log.d("BLE Data",  "Result : " +  beaconIDs[0] + ", " +  beaconIDs[1] + ", " +  beaconIDs[2] );
+
+            //////////////////////////////////////// if past 10 sec ///////////////////
+            if(elapsedSeconds > 30) {
                 stopScanning();
             }
 
             if( result.getScanRecord().getManufacturerSpecificData(321) != null) {
-                Log.d("BLE Data",  "RSSI : " +  result.getRssi() + " || Result : " + result);
-                peripheralTextView.append("Device ID: " + result.getDevice() + "  | RSSI: " + result.getRssi() + "\n");
-                // 여기에 같은거 다른 스트랭스 체크해서 넣어야됨
-                if(!Arrays.asList(beaconIDs).contains(result.getDevice())) {
-                    beacons[beaconCounter] = result;
-                    //beaconIDs[beaconCounter] = result.getDevice();
-                    for (int i = 0; i < beaconCounter; i++) {
-                        if (beacons[i].getRssi() < beacons[i + 1].getRssi()) {
-                            ScanResult temp = beacons[i];
-                            int idTemp = beaconIDs[i];
-                            beaconIDs[i] = beaconIDs[i + 1];
-                            beacons[i] = beacons[i + 1];
-                            beaconIDs[i + 1] = idTemp;
-                            beacons[i + 1] = temp;
-                        }
-                    }
-                    Toast.makeText(getApplicationContext(), "You have changed locations to: " + result.getDevice(), Toast.LENGTH_SHORT).show();
-                    beaconCounter++;
+                peripheralTextView.append("Mac : " + result.getDevice().getAddress() + "  | RSSI: " + result.getRssi() + " | Status: Found" +"\n" );
+                if(beaconResult.containsKey(result.getDevice().getAddress())) {
+                    beaconResult.remove(result.getDevice().getAddress());
+                    peripheralTextView.append("Mac : " + result.getDevice().getAddress() + "  | RSSI: " + result.getRssi() + " | Status: Updating" +"\n" );
+                    //Log.d("BLE Data",  " Updating " + " MAC : " + result.getDevice().getAddress());
                 }
+                beaconResult.put(result.getDevice().getAddress(), new Beacon(result.getDevice().getAddress(), result.getRssi(), 0));
+                Log.d("result", beaconResult.get(result.getDevice().getAddress()).toString());
+
                 // auto scroll for text view
                 final int scrollAmount = peripheralTextView.getLayout().getLineTop(peripheralTextView.getLineCount()) - peripheralTextView.getHeight();
                 // if there is no need to scroll, scrollAmount will be <=0
@@ -156,6 +148,7 @@ public class MainActivity extends AppCompatActivity {
         ScanningButton.setEnabled(false);
         tStart = System.currentTimeMillis();
         beaconCounter = 0;
+        beaconResult.clear();
         AsyncTask.execute(new Runnable() {
             @Override
             public void run() {
@@ -165,7 +158,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void stopScanning() {
-        System.out.println("stop scanning...");
+        Log.d("scanResult","stop scanning...");
+        sorted.clear();
+        sorted.putAll(beaconResult);
+        Log.d("scanResult", "There are " + sorted.size() + " beacons found");
+        for(Map.Entry<String,Beacon> entry: sorted.entrySet() ) {
+            Log.d("scanResult", entry.getValue().toString());
+        }
+
         peripheralTextView.append("Scan Stopped\n");
         ScanningButton.setText("Start Scan");
         ScanningButton.setEnabled(true);
