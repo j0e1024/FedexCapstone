@@ -5,9 +5,12 @@ import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
+import android.provider.Settings;
+import android.net.Uri;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.method.ScrollingMovementMethod;
@@ -15,6 +18,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -27,17 +31,28 @@ public class MainActivity extends AppCompatActivity {
 
     BluetoothManager btManager;
     BluetoothAdapter btAdapter;
-    BluetoothLeScanner btScanner;
-    Button ScanningButton;
-    TextView peripheralTextView;
+    static BluetoothLeScanner btScanner;
+    static Button ScanningButton;
+    static TextView peripheralTextView;
     private final static int REQUEST_ENABLE_BT = 1;
-    public HashMap<String, Beacon> beaconResult;
-    public ArrayList<Beacon> sorted;
-    private long tStart;
-    private long tEnd;
-    private int beaconCounter = 0;
-    private Lock lock;
-    private boolean done;
+    public final static int PERMISSION_REQUEST_CODE = 1;
+    public static HashMap<String, Beacon> beaconResult;
+    public static ArrayList<Beacon> sorted;
+    private static long tStart;
+    private static long tEnd;
+    //private int beaconCounter = 0;
+    private static Lock lock;
+    private static boolean done;
+
+//    private static MainActivity mInstance= null;
+//    protected MainActivity(){}
+//    public static synchronized MainActivity getInstance() {
+//        if(null == mInstance){
+//            mInstance = new MainActivity();
+//        }
+//        return mInstance;
+//    }
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,6 +83,14 @@ public class MainActivity extends AppCompatActivity {
             startActivityForResult(enableIntent,REQUEST_ENABLE_BT);
         }
 
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays( this)) {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
+            startActivityForResult(intent, PERMISSION_REQUEST_CODE);
+        }
+        else {
+            showButtonBubble();
+        }
+
         // Make sure we have access coarse location enabled, if not, prompt the user to enable it
         //if (this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 //            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -75,9 +98,21 @@ public class MainActivity extends AppCompatActivity {
 //            builder.show();
         //}
     }
+    protected  void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode,resultCode,data);
+
+        if(requestCode == PERMISSION_REQUEST_CODE) {
+            if(resultCode == RESULT_OK) {
+                showButtonBubble();
+            }
+        }
+    }
+    public void showButtonBubble() {
+        startService(new Intent(MainActivity.this, ButtonBubbleService.class));
+    }
 
     // Device scan callback.
-    private ScanCallback leScanCallback = new ScanCallback() {
+    private static ScanCallback leScanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             /////////////////////////////////////// Timer //////////////////////////
@@ -111,7 +146,7 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    public void startScanning() {
+    public static void startScanning() {
         Log.d("scanBegin", "start scanning...");
         done = false;
         peripheralTextView.setText("");
@@ -119,7 +154,6 @@ public class MainActivity extends AppCompatActivity {
         ScanningButton.setText("Scanning...");
         ScanningButton.setEnabled(false);
         tStart = System.currentTimeMillis();
-        beaconCounter = 0;
         beaconResult.clear();
         AsyncTask.execute(new Runnable() {
             @Override
@@ -129,7 +163,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    public void stopScanning() {
+    public static void stopScanning() {
         if(done || !lock.tryLock()) {
             return;
         }
@@ -148,12 +182,14 @@ public class MainActivity extends AppCompatActivity {
 
         Log.d("scanResult", "There are " + sorted.size() + " beacons found:");
         Log.d("scanResult", "" + sorted);
-
-        Log.d("scanResult", "The closest beacon is: " + sorted.get(0));
-        peripheralTextView.append("Scan Stopped\n");
-        peripheralTextView.append("Result: " + sorted.get(0) + "\n");
-        ScanningButton.setText("Start Scan");
-        ScanningButton.setEnabled(true);
+        if(sorted.size() != 0) {
+            Log.d("scanResult", "The closest beacon is: " + sorted.get(0));
+            ButtonBubbleService.showToast();
+            peripheralTextView.append("Scan Stopped\n");
+            peripheralTextView.append("Result: " + sorted.get(0) + "\n");
+            ScanningButton.setText("Start Scan");
+            ScanningButton.setEnabled(true);
+        }
         AsyncTask.execute(new Runnable() {
             @Override
             public void run() {
