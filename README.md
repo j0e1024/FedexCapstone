@@ -1,2 +1,0 @@
-# FedexCapstone
-Fedex Capstone Project 

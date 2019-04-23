@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">FedEx BLE Penn State</string>
+    <string name="action_settings">Settings</string>
+</resources>
